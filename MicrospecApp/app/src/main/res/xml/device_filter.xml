@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 0x16C0 / 0x0483: Teensyduino  -->
+    <usb-device vendor-id="5824" product-id="1155" />
+
+    <!-- 0x04E8 / 0xA500: Samsung  -->
+    <!-- <usb-device vendor-id="1256" product-id="42240" /> -->
+
+</resources>

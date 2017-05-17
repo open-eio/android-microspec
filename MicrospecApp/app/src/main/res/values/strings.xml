@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">NeuroDataGateway</string>
+    <string name="connect">Connect</string>
+    <string name="ip">IP</string>
+    <string name="port">Port</string>
+    <string name="start">Start</string>
+    <string name="clear">Clear</string>
+    <string name="stop">Stop</string>
+    <string name="textview1">textview1</string>
+    <string name="details">Details</string>
+</resources>
