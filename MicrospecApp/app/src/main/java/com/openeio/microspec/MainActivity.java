@@ -52,9 +52,8 @@ import static android.content.Intent.ACTION_MAIN;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final long USB_DATA_READY_SIGNAL_TIMEOUT_NANOS = 2*1_000_000_000; //2 seconds
-    private static final int  TEENSY_USB_VID  = 0x16C0;
-    private static final int  SAMSUNG_USB_VID = 0x04E8;
+    private static final long USB_DATA_READY_SIGNAL_TIMEOUT_NANOS = 2 * 1_000_000_000; //2 seconds
+    private static final int TEENSY_USB_VID = 0x16C0;
 
     private static final String TAG = "MyActivity";
     protected static final int DATA_CHUNK_SIZE = 1024;
@@ -66,16 +65,11 @@ public class MainActivity extends AppCompatActivity {
     UsbSerialDevice serialPort = null;
     UsbDeviceConnection connection;
 
-    ServerSocket serverSocket;
-    Thread socketServerThread = null;
-
     volatile boolean usbDataReadySignal = false;
-    volatile byte[]  volatileUsbData = null;
-    volatile int     argLength = 0;
-    //volatile String volatileUsbData;
+    volatile byte[] volatileUsbData = null;
+    volatile int argLength = 0;
 
-    volatile boolean shutdownReplyThread = false;
-    String command ;
+    String command;
 
 
     // seriaPort: CDCSerialDevice@731a650 for teensy
@@ -106,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
             tvAppend(textView, "App launched with: " + action + "\n");
             if (action == ACTION_MAIN) {
                 searchUsbDevices();
-            } else{
+            } else {
                 //something other than the icon launched this application, so handle
                 broadcastReceiver.onReceive(context, intent);
             }
@@ -120,28 +114,17 @@ public class MainActivity extends AppCompatActivity {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         registerReceiver(broadcastReceiver, filter);
 
-        tvAppend(textView, getIpAddress());
-        if (socketServerThread == null) {
-            socketServerThread = new Thread(new SocketServerThread());
-            socketServerThread.start();
-        }
     }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        if (serialPort != null){
+        if (serialPort != null) {
             closeSerialConnection();
         }
-
-        if (serverSocket != null) {
-            try {
-                serverSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
+
     //----------------------------------------------------------------------------------------------
     // UI
     public void onClickClear(View view) {
@@ -160,65 +143,8 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public static String intentToString(Intent intent) {
-        if (intent == null) {
-            return null;
-        }
 
-        return intent.toString() + " " + bundleToString(intent.getExtras());
-    }
-
-    public static String bundleToString(Bundle bundle) {
-        StringBuilder out = new StringBuilder("Bundle[");
-
-        if (bundle == null) {
-            out.append("null");
-        } else {
-            boolean first = true;
-            for (String key : bundle.keySet()) {
-                if (!first) {
-                    out.append(", ");
-                }
-
-                out.append(key).append('=');
-
-                Object value = bundle.get(key);
-
-                if (value instanceof int[]) {
-                    out.append(Arrays.toString((int[]) value));
-                } else if (value instanceof byte[]) {
-                    out.append(Arrays.toString((byte[]) value));
-                } else if (value instanceof boolean[]) {
-                    out.append(Arrays.toString((boolean[]) value));
-                } else if (value instanceof short[]) {
-                    out.append(Arrays.toString((short[]) value));
-                } else if (value instanceof long[]) {
-                    out.append(Arrays.toString((long[]) value));
-                } else if (value instanceof float[]) {
-                    out.append(Arrays.toString((float[]) value));
-                } else if (value instanceof double[]) {
-                    out.append(Arrays.toString((double[]) value));
-                } else if (value instanceof String[]) {
-                    out.append(Arrays.toString((String[]) value));
-                } else if (value instanceof CharSequence[]) {
-                    out.append(Arrays.toString((CharSequence[]) value));
-                } else if (value instanceof Parcelable[]) {
-                    out.append(Arrays.toString((Parcelable[]) value));
-                } else if (value instanceof Bundle) {
-                    out.append(bundleToString((Bundle) value));
-                } else {
-                    out.append(value);
-                }
-
-                first = false;
-            }
-        }
-
-        out.append("]");
-        return out.toString();
-    }
-
-    public void doNotify(final String msg){
+    public void doNotify(final String msg) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -229,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
                 NotificationCompat.Builder mBuilder =
                         new NotificationCompat.Builder(getApplicationContext())
                                 .setSmallIcon(R.drawable.notification_icon)
-                                .setContentTitle("NeuroDot Gateway")
+                                .setContentTitle("MicroSpec")
                                 .setContentText(msg)
                                 .setContentIntent(pendingIntent) //Required on Gingerbread and below
                                 .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
@@ -240,7 +166,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
-
 
     //----------------------------------------------------------------------------------------------
     // USB initialization and utils
@@ -260,13 +185,11 @@ public class MainActivity extends AppCompatActivity {
                     tvAppend(textView, "USB: found Teensy!\n");
                     openSerialConnection(device);
                     tvAppend(textView, "USB: Teensy connected!\n");
-                } else if (deviceVID == SAMSUNG_USB_VID) {
-                    tvAppend(textView, "USB: found Samsung GearVR!\n");
-                } else{
+                } else {
                     tvAppend(textView, "USB: unkown device.\n");
                 }
             }
-        } else{
+        } else {
             tvAppend(textView, "USB: ...nothing attached yet.\n");
         }
     }
@@ -278,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
                 tvAppend(textView, "USB: handling intent broadcast...\n");
                 String action = intent.getAction();
                 UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-                if (device == null){
+                if (device == null) {
                     tvAppend(textView, "USB: WARNING got null device!\n");
                 } else if (action.equals(UsbManager.ACTION_USB_DEVICE_ATTACHED)) {
                     handleUsbDeviceAttached(device);
@@ -292,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
-    private void handleUsbDeviceAttached(UsbDevice device){
+    private void handleUsbDeviceAttached(UsbDevice device) {
         int deviceVID = device.getVendorId();
         int devicePID = device.getProductId();
 
@@ -303,32 +226,32 @@ public class MainActivity extends AppCompatActivity {
             tvAppend(textView, "USB: Teensy connected!\n");
 
             //notify
-            doNotify("NeuroDot Device connected!");
+            doNotify("Device connected!");
 
+            //FIXME just for testing
+            //test command here
+            String command = "SPEC.READ?\n";
+            serialPort.write(command.getBytes());
 
-        } else if (deviceVID == SAMSUNG_USB_VID) {
-            tvAppend(textView, "USB: Samsung GearVR connected!\n");
         }
     }
 
-    private void handleUsbDeviceDetached(UsbDevice device){
+    private void handleUsbDeviceDetached(UsbDevice device) {
         int deviceVID = device.getVendorId();
         int devicePID = device.getProductId();
 
         tvAppend(textView, "USB: ACTION_USB_DEVICE_DETACHED\n");
         if (deviceVID == TEENSY_USB_VID) {
             tvAppend(textView, "USB: Teensy disconnected!\n");
-            if(serialPort != null) {
+            if (serialPort != null) {
                 closeSerialConnection();
                 //notify
-                doNotify("NeuroDot Device disconnected!");
+                doNotify("Device disconnected!");
             }
-        } else if (deviceVID == SAMSUNG_USB_VID) {
-            tvAppend(textView, "USB: Samsung GearVR disconnected!\n");
         }
     }
 
-    protected void openSerialConnection(UsbDevice device){
+    protected void openSerialConnection(UsbDevice device) {
         connection = usbManager.openDevice(device);
         serialPort = UsbSerialDevice.createUsbSerialDevice(device, connection);
         if (serialPort != null) {
@@ -350,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    protected void closeSerialConnection(){
+    protected void closeSerialConnection() {
         //cleanup
         serialPort.close();
         serialPort = null;
@@ -370,6 +293,9 @@ public class MainActivity extends AppCompatActivity {
                 argLength = arg0.length;
                 volatileUsbData = arg0;
                 usbDataReadySignal = true;
+                //FIXME just for testing
+                String tempUsbRecvData = new String(volatileUsbData);
+                tvAppend(textView, "USB recv <- " + tempUsbRecvData);
             } catch (Exception e) {
                 e.printStackTrace();
                 tvAppend(textView, "ERROR :Probably Out.println error./n");
@@ -380,286 +306,18 @@ public class MainActivity extends AppCompatActivity {
     private boolean waitOnUsbDataReadySignal() {
         long startTime = System.nanoTime();
 
-        while(!usbDataReadySignal){
+        while (!usbDataReadySignal) {
             long estimatedTime = System.nanoTime() - startTime;
-            if (estimatedTime >= USB_DATA_READY_SIGNAL_TIMEOUT_NANOS){
+            if (estimatedTime >= USB_DATA_READY_SIGNAL_TIMEOUT_NANOS) {
                 return false;
             }
             try {
-                Thread.sleep(0,100_000); //delay for 100 microseconds
+                Thread.sleep(0, 100_000); //delay for 100 microseconds
             } catch (InterruptedException e) {
                 //ignore interruption
             }
         }
         return true;
 
-    }
-    //----------------------------------------------------------------------------------------------
-    private class SocketServerThread extends Thread {
-
-        static final int SocketServerPORT = 8080;
-        static final int REPLY_THREAD_COMPLETION_TIMEOUT_MILLIS = 1000;
-        int count = 0;
-
-        SocketServerReplyThread socketServerReplyThread = null;
-
-        @Override
-        public void run()  {
-            try {
-                serverSocket = new ServerSocket(SocketServerPORT);
-                tvAppend(textView,"Port : "
-                        + serverSocket.getLocalPort()+"\n");
-
-                while (true) {
-                    tvAppend(textView, "SocketServer: ready, waiting on connection #" + count + ".\n");
-                    Socket socket = serverSocket.accept();
-                    tvAppend(textView, "SocketServer: accepted connection #" + count + " from " + socket.getInetAddress()
-                            + ":" + socket.getPort() + "\n");
-                    doNotify("The network client has been connected!");
-                    //tvAppend(textView, "default send buffer size: " + socket.getSendBufferSize()  + "\n");
-                    if((socketServerReplyThread != null) && socketServerReplyThread.isAlive()){
-                        tvAppend(textView, "SocketServer: waiting for previous reply thread to shutdown...\n");
-                        //if the thread is still running, wait a bit...
-                        try {
-                            socketServerReplyThread.join(REPLY_THREAD_COMPLETION_TIMEOUT_MILLIS);
-                            //if still alive, then shut it down!
-                            if (socketServerReplyThread.isAlive()) {
-                                tvAppend(textView, "SocketServer: ...timeout, requesting shutdown\n");
-                                shutdownReplyThread = true;
-                                socketServerReplyThread.join();
-                                shutdownReplyThread = false;
-                            }
-                        } catch (InterruptedException e){
-                            tvAppend(textView, "SocketServer: ...interrupted! \n");
-                        }
-                        tvAppend(textView, "SocketServer: ...finished.\n");
-                    }
-                    socketServerReplyThread = new SocketServerReplyThread(socket, count);
-                    socketServerReplyThread.start();
-                    count++;
-                }
-            } catch (IOException e) {
-                tvAppend(textView, "ERROR : "+e);
-            }
-        }
-
-    }
-
-   private class SocketServerReplyThread extends Thread {
-
-        private Socket hostThreadSocket;
-
-        private static final long CONNECTION_WATCHDOG_TIMEOUT_MILLIS = 30*1_000; //10 seconds
-        private static final long BYTES_TO_SEND_CAP = DATA_CHUNK_SIZE;
-
-        int id;
-
-        SocketServerReplyThread(Socket socket, int c) {
-            hostThreadSocket = socket;
-            id = c;
-        }
-
-        @Override
-        public void run() {
-            OutputStream outputStream   = null;
-            PrintWriter printStream     = null;
-            BufferedOutputStream bufferedOutputStream = null;
-            BufferedReader bufferedReader = null;
-            String receiveMsg;
-            String tempUsbRecvData;
-            boolean isStreaming = false; //start in DIALOG mode
-            boolean watchDogIsActive = false;
-            long connectionWatchDogLastFeedTime = System.currentTimeMillis();
-            long bytes_to_send = 0;
-            try {
-                outputStream = hostThreadSocket.getOutputStream();
-                printStream = new PrintWriter(outputStream);
-                bufferedOutputStream = new BufferedOutputStream(outputStream);
-                bufferedReader = new BufferedReader(new InputStreamReader(hostThreadSocket.getInputStream()));
-                boolean isIdle = true;
-                while(true){
-                    isIdle = true; //assume we are idle going into the loop
-                    //check to see if this thread should be shutdown
-                    if (shutdownReplyThread){
-                        shutdownReplyThread = false;
-                        throw new Exception("The thread was signalled to shutdown.\n");
-                    }
-                    //check to see if the watchdog timer has run out
-                    if (watchDogIsActive){
-                        long elapsedTime = System.currentTimeMillis() - connectionWatchDogLastFeedTime;
-                        if (elapsedTime >= CONNECTION_WATCHDOG_TIMEOUT_MILLIS){
-                            throw new Exception("The Connection Watch Dog Timer has expired!\n");
-                        }
-                    }
-                    //handle any commands if input is waiting
-                    if (bufferedReader.ready()) {
-                        isIdle = false; //we have network data waiting
-                        receiveMsg = bufferedReader.readLine();
-                        //prevent watchdog from force exiting thread
-                        connectionWatchDogLastFeedTime = System.currentTimeMillis();
-                        tvAppend(textView, "ReplyThread #"+id+": network recv -> " + receiveMsg + "\n");
-                        if (receiveMsg == "") {
-                            //do nothing, skip to next loop iteration NOTE sending empty command
-                            //to the USB device would hang the usbDataReadySignal waiting loop
-                            tvAppend(textView, "ReplyThread #"+id+": <ignoring empty command>\n");
-                            printStream.print("");
-                            printStream.flush();
-                        } else if (receiveMsg == null) {
-                            tvAppend(textView, "ReplyThread #"+id+": <null recv>\n");
-                            throw new Exception("receive yielded null\n"); //must treat as error condition, likely cause socket closure on client end
-                        } else if(receiveMsg.contains("GATEWAY:IDN?")){
-                            tvAppend(textView, "ReplyThread #"+id+": <GATEWAY:IDN? requested>\n");
-                            printStream.print("NeuroDot Gateway Android\n");
-                            printStream.flush();
-                        }
-                        else if(receiveMsg.contains("GATEWAY:DISCONNECT")){
-                            tvAppend(textView, "ReplyThread #"+id+": <GATEWAY:DISCONNECT requested>\n");
-                            break;// jump out of loop
-                        } else if(receiveMsg.contains("GATEWAY:WATCHDOG.ACTIVATE")){
-                            tvAppend(textView, "ReplyThread #"+id+": <watchdog is ACTIVE>\n");
-                            watchDogIsActive = true;
-                        } else if(receiveMsg.contains("GATEWAY:WATCHDOG.DEACTIVATE")){
-                            tvAppend(textView, "ReplyThread #"+id+": <watchdog is NOT ACTIVE>\n");
-                            watchDogIsActive = false;
-                        } else if(receiveMsg.contains("GATEWAY:WATCHDOG.FEED")){
-                            tvAppend(textView, "ReplyThread #"+id+": <watchdog has been fed>\n");
-                            connectionWatchDogLastFeedTime = System.currentTimeMillis();
-                        }
-                        //remainder of conditions require serial port connection!
-                        else if (serialPort == null) {
-                            tvAppend(textView, "ReplyThread #"+id+": <sending ERROR: USB device not connected>\n");
-                            printStream.print("#ERROR: USB device not connected\n");
-                            printStream.flush();
-                            //FIXME we have to terminate and restart the connection or else this
-                            //      thread hangs, WHY?
-                            throw new Exception("USB device not connected\n");
-                        } else if (isStreaming) {
-                            if(receiveMsg.contains("TEST.STREAM.STOP")   ||
-                                    receiveMsg.contains("IOMODE.DIALOG") ||
-                                    receiveMsg.contains("ADS.STOP")){
-                                //send command to USB device serial port
-                                command = receiveMsg+"\n";
-                                tvAppend(textView,"ReplyThread #"+id+": <sending to USB>\n");
-                                usbDataReadySignal = false;    //reset state of usbDataReadySignal event flag
-                                serialPort.write(command.getBytes());
-                                //exit STREAMING mode
-                                tvAppend(textView,"ReplyThread #"+id+": exit Streaming mode.\n");
-                                isStreaming = false;
-                            } else {
-                                tvAppend(textView,"ReplyThread #"+id+": <#WARNING: Ignoring that command while in streaming mode.>\n");
-                            }
-                        } else {
-                            //in DIALOG mode send command to USB device serial port
-                            command = receiveMsg + "\n";
-                            tvAppend(textView, "ReplyThread #"+id+": <sending to USB>\n");
-                            usbDataReadySignal = false;    //reset state of usbDataReadySignal event flag
-                            serialPort.write(command.getBytes());
-                            if (receiveMsg.contains("TEST.STREAM.START") ||
-                                    receiveMsg.contains("IOMODE.STREAM") ||
-                                    receiveMsg.contains("ADS.START")) {
-                                //enter STREAMING mode
-                                tvAppend(textView, "ReplyThread #"+id+": entering Streaming mode.\n");
-                                isStreaming = true;
-                                usbDataReadySignal = false;    //quickly allow UsbReadCallback to work again
-                                continue; //skip to next loop iteration
-                            }
-                            //block until UsbSerialInterfaceOwn.UsbReadCallback sets the data in volatileUsbData
-                            boolean success = waitOnUsbDataReadySignal(); //will return false on timeout
-                            if (success ){
-                                tempUsbRecvData = new String(volatileUsbData);  //store the data from the UsbReadCallback
-                                usbDataReadySignal = false;         //quickly allow UsbReadCallback to work again
-                                tvAppend(textView, "ReplyThread #"+id+": USB recv <- " + tempUsbRecvData);
-                                printStream.print(tempUsbRecvData);
-                                printStream.flush();
-                            } else { //waiting on USB response timedout
-                                tvAppend(textView,"ReplyThread #"+id+": <sending WARNING: USB recv timedout>\n");
-                                printStream.print("#WARNING: USB recv timedout\n");
-                                printStream.flush();
-                            }
-                        }
-                    }
-                    //handle streaming data sent from USB device
-                    if (isStreaming) {
-                        if (usbDataReadySignal) {
-                            isIdle = false; //we have USB data waiting
-                            bufferedOutputStream.write(volatileUsbData, 0, argLength);
-                            bytes_to_send += argLength;
-                            usbDataReadySignal = false;
-                            //if (bytes_to_send >= BYTES_TO_SEND_CAP) {
-                            //    bufferedOutputStream.flush(); //IMPORTANT make sure streaming is smooth
-                            //    bytes_to_send = 0; //IMPORTANT clear the total after sending
-                            //}
-                            //FIXME flush immediately, is this much less efficient in data streaming?
-                            bufferedOutputStream.flush(); //IMPORTANT make sure streaming is smooth
-                            bytes_to_send = 0; //IMPORTANT clear the total after sending
-                        }
-                        //check if this loop iteration has been idle
-                        if(isIdle){
-                            //rest a little bit
-                            Thread.sleep(0, 100_000); //delay for 100 microseconds
-                        }
-                    } else{
-                        //check if this loop iteration has been idle
-                        if(isIdle) {
-                            //rest a little longer in dialog mode
-                            Thread.sleep(10); //sleep for 10 milliseconds
-                        }
-                    }
-
-                }
-            } catch (Exception e) {
-                tvAppend(textView, "ReplyThread #"+id+": ERROR : "+e);
-                if ((serialPort != null) && isStreaming) {
-                    tvAppend(textView, "ReplyThread #"+id+": sending STOP commands to USB device.\n");
-                    command = "ADS.STOP\n";
-                    serialPort.write(command.getBytes());
-                    command = "TEST.STREAM.STOP\n";
-                    serialPort.write(command.getBytes());
-                }
-            } finally{
-                tvAppend(textView,"ReplyThread #"+id+": exiting SocketServerReplyThread and cleaning up.\n");
-                try {
-                    outputStream.close();
-                    bufferedOutputStream.close();
-                    bufferedReader.close();
-                    printStream.close();
-                } catch (java.io.IOException e){
-                    //ignore errors on close
-                }
-            }
-
-        }
-
-   }
-
-    private String getIpAddress() {
-        String ip = "";
-        try {
-            Enumeration<NetworkInterface> enumNetworkInterfaces = NetworkInterface
-                    .getNetworkInterfaces();
-            while (enumNetworkInterfaces.hasMoreElements()) {
-                NetworkInterface networkInterface = enumNetworkInterfaces
-                        .nextElement();
-                Enumeration<InetAddress> enumInetAddress = networkInterface
-                        .getInetAddresses();
-                while (enumInetAddress.hasMoreElements()) {
-                    InetAddress inetAddress = enumInetAddress.nextElement();
-
-                    if (inetAddress.isSiteLocalAddress()) {
-                        ip += "My IP Address: "
-                                + inetAddress.getHostAddress() + "\n";
-                    }
-
-                }
-
-            }
-
-        } catch (SocketException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            ip += "Something Wrong! " + e.toString() + "\n";
-        }
-
-        return ip;
     }
 }

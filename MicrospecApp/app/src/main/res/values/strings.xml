@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">NeuroDataGateway</string>
+    <string name="app_name">MicroSpec</string>
     <string name="connect">Connect</string>
     <string name="ip">IP</string>
     <string name="port">Port</string>
