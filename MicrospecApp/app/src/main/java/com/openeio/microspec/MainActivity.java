@@ -14,6 +14,8 @@ import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Parcelable;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
@@ -46,6 +48,8 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static android.content.Intent.ACTION_MAIN;
 
@@ -65,11 +69,7 @@ public class MainActivity extends AppCompatActivity {
     UsbSerialDevice serialPort = null;
     UsbDeviceConnection connection;
 
-    volatile boolean usbDataReadySignal = false;
-    volatile byte[] volatileUsbData = null;
-    volatile int argLength = 0;
-
-    String command;
+    private BlockingQueue<byte[]> usbQueue; //queue for holding USB data
 
 
     // seriaPort: CDCSerialDevice@731a650 for teensy
@@ -86,6 +86,9 @@ public class MainActivity extends AppCompatActivity {
         textView = (TextView) findViewById(R.id.textView3);
 
         textView.setMovementMethod(new ScrollingMovementMethod());
+
+        //set up USB data queue
+        usbQueue = new LinkedBlockingQueue<>();
 
         //Handle the initialization of USB devices:
         //  If the app is started by the icon (ACTION_MAIN), then see if USB devices are already
@@ -113,6 +116,25 @@ public class MainActivity extends AppCompatActivity {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         registerReceiver(broadcastReceiver, filter);
+
+        //setup Floating Action Button
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+               // Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+               //         .setAction("Action", null).show();
+                if (serialPort != null) {
+                    try {
+                        readSpec();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                } else{
+                    tvAppend(textView, "ERROR: no device is attached!\n");
+                }
+            }
+        });
 
     }
 
@@ -228,11 +250,6 @@ public class MainActivity extends AppCompatActivity {
             //notify
             doNotify("Device connected!");
 
-            //FIXME just for testing
-            //test command here
-            String command = "SPEC.READ?\n";
-            serialPort.write(command.getBytes());
-
         }
     }
 
@@ -273,6 +290,26 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    protected void dumpUsbQueueData(boolean display){
+        try {
+            while(true){
+                byte[] usbRecvData = usbQueue.poll();
+                if (usbRecvData == null){
+                    break;
+                }
+                tvAppend(textView, "USB: Dumping Queue contents: (" + usbRecvData.length + " bytes)\n");
+                if (display){
+                    String s = new String(usbRecvData); //interpret as ASCII
+                    tvAppend(textView, s);
+                    tvAppend(textView, "\n");
+                }
+
+                Thread.sleep(10); //sleep for a short time 10 ms to allow queue to fill in between
+            }
+        } catch (InterruptedException e){};
+
+    }
+
     protected void closeSerialConnection() {
         //cleanup
         serialPort.close();
@@ -283,41 +320,29 @@ public class MainActivity extends AppCompatActivity {
     UsbSerialInterface.UsbReadCallback mCallback = new UsbSerialInterface.UsbReadCallback() { //Defining a Callback which triggers whenever data is read.
         @Override
         public void onReceivedData(byte[] arg0) {
-
             try {
-                // we MUST block until this flag is cleared by the SocketServerReplyThread!
-                // TODO replace volatileUsbData with a threadsafe Queue so blocking is not necessary
-//                while(usbDataReadySignal){
-//                    Thread.sleep(0,100_000); //delay for 100 microseconds
-//                }
-                argLength = arg0.length;
-                volatileUsbData = arg0;
-                usbDataReadySignal = true;
-                //FIXME just for testing
-                String tempUsbRecvData = new String(volatileUsbData);
-                tvAppend(textView, "USB recv <- " + tempUsbRecvData);
-            } catch (Exception e) {
+                usbQueue.put(arg0);
+            } catch (InterruptedException e) {
                 e.printStackTrace();
-                tvAppend(textView, "ERROR :Probably Out.println error./n");
             }
         }
     };
 
-    private boolean waitOnUsbDataReadySignal() {
-        long startTime = System.nanoTime();
 
-        while (!usbDataReadySignal) {
-            long estimatedTime = System.nanoTime() - startTime;
-            if (estimatedTime >= USB_DATA_READY_SIGNAL_TIMEOUT_NANOS) {
-                return false;
-            }
-            try {
-                Thread.sleep(0, 100_000); //delay for 100 microseconds
-            } catch (InterruptedException e) {
-                //ignore interruption
-            }
+    private void readSpec() throws InterruptedException {
+        //send the command to the device
+        String command = "SPEC.READ?\n";
+        tvAppend(textView, command);
+        serialPort.write(command.getBytes());
+        //fetch the data from the queue
+        byte[] usbRecvData = usbQueue.take();
+        if (usbRecvData != null){
+            String s = new String(usbRecvData); //interpret as ASCII
+            tvAppend(textView, s);
+            tvAppend(textView, "\n");
+        } else{
+            tvAppend(textView, "ERROR: no data on USB queue!\n");
         }
-        return true;
 
     }
 }
