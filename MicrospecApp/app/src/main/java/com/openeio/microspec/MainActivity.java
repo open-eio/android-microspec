@@ -1,6 +1,5 @@
 package com.openeio.microspec;
 
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -10,12 +9,8 @@ import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
-import android.media.Ringtone;
 import android.media.RingtoneManager;
-import android.net.Uri;
-import android.os.Parcelable;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
@@ -28,23 +23,7 @@ import android.widget.Toast;
 
 import com.felhr.usbserial.UsbSerialDevice;
 import com.felhr.usbserial.UsbSerialInterface;
-import com.openeio.microspec.R;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
-import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
@@ -56,9 +35,13 @@ import static android.content.Intent.ACTION_MAIN;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String SPEC_DATA_KEY = "spec_data";
+    public static final String WAVELENGTH_VALS_KEY = "wavelength_vals";
+
+
+
     private static final long USB_DATA_READY_SIGNAL_TIMEOUT_NANOS = 2 * 1_000_000_000; //2 seconds
     private static final int TEENSY_USB_VID = 0x16C0;
-
     private static final String TAG = "MyActivity";
     protected static final int DATA_CHUNK_SIZE = 1024;
 
@@ -66,13 +49,12 @@ public class MainActivity extends AppCompatActivity {
     TextView textView;
     UsbManager usbManager;
 
+    // seriaPort: CDCSerialDevice@731a650 for teensy
     UsbSerialDevice serialPort = null;
     UsbDeviceConnection connection;
 
     private BlockingQueue<byte[]> usbQueue; //queue for holding USB data
 
-
-    // seriaPort: CDCSerialDevice@731a650 for teensy
 
     //----------------------------------------------------------------------------------------------
     // MainActivity method overrides
@@ -122,11 +104,26 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-               // Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-               //         .setAction("Action", null).show();
+                //FIXME testing only
+                //launch the SpectrumPlot activity
+//                Intent intent = new Intent(view.getContext(), SpectrumPlotActivity.class);
+//                //intent.putExtra(EXTRA_MESSAGE, message);
+//                startActivity(intent);
+
                 if (serialPort != null) {
                     try {
-                        readSpec();
+                        //read the spectrometer and get the data
+                        int[] specData = readSpec();
+                        int[] wavelengthVals = new int[specData.length];
+                        for (int i=0; i < wavelengthVals.length; i++){
+                            wavelengthVals[i] = i;
+                        }
+                        //launch the SpectrumPlot activity and send the data
+                        Intent intent = new Intent(view.getContext(), SpectrumPlotActivity.class);
+                        intent.putExtra(SPEC_DATA_KEY, specData);
+                        intent.putExtra(WAVELENGTH_VALS_KEY, wavelengthVals);
+                        startActivity(intent);
+
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -135,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
 
     }
 
@@ -329,7 +327,7 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
-    private void readSpec() throws InterruptedException {
+    private int[] readSpec() throws InterruptedException {
         //send the command to the device
         String command = "SPEC.READ?\n";
         tvAppend(textView, command);
@@ -340,8 +338,23 @@ public class MainActivity extends AppCompatActivity {
             String s = new String(usbRecvData); //interpret as ASCII
             tvAppend(textView, s);
             tvAppend(textView, "\n");
+            //parse the string into a numerical array
+            String[] strVals = s.split(",");
+            int[] intVals = new int[strVals.length];
+            for (int i=0; i < strVals.length; i++){
+                try{
+                    String sv = strVals[i].trim().replaceAll("\n ", ""); //remove spaces and newlines
+                    intVals[i] = Integer.parseInt(sv);
+                } catch(NumberFormatException e){
+                    tvAppend(textView, "readSpec caught ERROR: " + e.toString() + "\n");
+                    tvAppend(textView, "\t...substituting zero value.\n");
+                    intVals[i] = 0;
+                }
+            }
+            return intVals;
         } else{
             tvAppend(textView, "ERROR: no data on USB queue!\n");
+            return null;
         }
 
     }

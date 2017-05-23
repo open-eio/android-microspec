@@ -8,4 +8,10 @@
     <string name="stop">Stop</string>
     <string name="textview1">textview1</string>
     <string name="details">Details</string>
+    <string name="title_activity_spectrum_plot">SpectrumPlotActivity</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
 </resources>
