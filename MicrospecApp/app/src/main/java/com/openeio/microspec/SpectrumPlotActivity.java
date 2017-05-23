@@ -30,8 +30,8 @@ public class SpectrumPlotActivity extends AppCompatActivity {
 
         //fetch the data that was sent with the intent
         Bundle extras = getIntent().getExtras();
-        int[] specData             = extras.getIntArray(MainActivity.SPEC_DATA_KEY);
-        final int[] wavelengthData = extras.getIntArray(MainActivity.WAVELENGTH_VALS_KEY);
+        int[] specData                = extras.getIntArray(MainActivity.SPEC_DATA_KEY);
+        final double[] wavelengthVals = extras.getDoubleArray(MainActivity.WAVELENGTH_VALS_KEY);
 
         //convert the data into Number array types
         Float[] Y = new Float[specData.length];
@@ -44,9 +44,9 @@ public class SpectrumPlotActivity extends AppCompatActivity {
             }
         }
 
-        final Integer[] X = new Integer[wavelengthData.length];
-        for (int i = 0; i < wavelengthData.length; i++) {
-            X[i] = Integer.valueOf(wavelengthData[i]);
+        final Double[] X = new Double[wavelengthVals.length];
+        for (int i = 0; i < wavelengthVals.length; i++) {
+            X[i] = Double.valueOf(wavelengthVals[i]);
         }
 
         //rescale the data
@@ -71,8 +71,8 @@ public class SpectrumPlotActivity extends AppCompatActivity {
         plot.getGraph().getLineLabelStyle(XYGraphWidget.Edge.BOTTOM).setFormat(new Format() {
             @Override
             public StringBuffer format(Object obj, StringBuffer toAppendTo, FieldPosition pos) {
-                int i = Math.round(((Number) obj).floatValue());
-                return toAppendTo.append(X[i]);
+                int x = Math.round(((Number) obj).intValue());
+                return toAppendTo.append(x);
             }
             @Override
             public Object parseObject(String source, ParsePosition pos) {

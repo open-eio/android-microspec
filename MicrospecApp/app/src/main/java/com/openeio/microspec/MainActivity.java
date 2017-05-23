@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import static android.content.Intent.ACTION_MAIN;
 
@@ -44,6 +45,16 @@ public class MainActivity extends AppCompatActivity {
     private static final int TEENSY_USB_VID = 0x16C0;
     private static final String TAG = "MyActivity";
     protected static final int DATA_CHUNK_SIZE = 1024;
+    private static final double DEFAULT_INTEGRATION_TIME = 1e-3; //one millisecond
+
+    protected Map<String,Double> c12880CalibrationCoeffs;
+
+    public static final double C12880_CAL_A0 = 3.152446842e+2;
+    public static final double C12880_CAL_B1 = 2.688494791;
+    public static final double C12880_CAL_B2 = -8.964262020e-4;
+    public static final double C12880_CAL_B3 = -1.030880174e-5;
+    public static final double C12880_CAL_B4 = 2.083514791e-8;
+    public static final double C12880_CAL_B5 = -1.290505933e-11;
 
     Button clearButton;
     TextView textView;
@@ -63,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        usbManager = (UsbManager) getSystemService(this.USB_SERVICE);
+        usbManager = (UsbManager) getSystemService(USB_SERVICE);
         clearButton = (Button) findViewById(R.id.buttonClear);
         textView = (TextView) findViewById(R.id.textView3);
 
@@ -71,6 +82,15 @@ public class MainActivity extends AppCompatActivity {
 
         //set up USB data queue
         usbQueue = new LinkedBlockingQueue<>();
+
+        //setup map for holding calibration coefficients
+        c12880CalibrationCoeffs = new HashMap<>(6);
+        c12880CalibrationCoeffs.put("A0",C12880_CAL_A0);
+        c12880CalibrationCoeffs.put("B1",C12880_CAL_B1);
+        c12880CalibrationCoeffs.put("B2",C12880_CAL_B2);
+        c12880CalibrationCoeffs.put("B3",C12880_CAL_B3);
+        c12880CalibrationCoeffs.put("B4",C12880_CAL_B4);
+        c12880CalibrationCoeffs.put("B5",C12880_CAL_B5);
 
         //Handle the initialization of USB devices:
         //  If the app is started by the icon (ACTION_MAIN), then see if USB devices are already
@@ -112,11 +132,22 @@ public class MainActivity extends AppCompatActivity {
 
                 if (serialPort != null) {
                     try {
+                        //set the integration time
+                        specInteg(DEFAULT_INTEGRATION_TIME);
                         //read the spectrometer and get the data
-                        int[] specData = readSpec();
-                        int[] wavelengthVals = new int[specData.length];
+                        int[] specData = specRead();
+                        //compute the wavelengths array
+                        double[] wavelengthVals = new double[specData.length];
                         for (int i=0; i < wavelengthVals.length; i++){
-                            wavelengthVals[i] = i;
+                            double p = i+1.0;
+                            double x = C12880_CAL_A0 +
+                                       C12880_CAL_B1*p +
+                                       C12880_CAL_B2*Math.pow(p,2.0) +
+                                       C12880_CAL_B3*Math.pow(p,3.0) +
+                                       C12880_CAL_B4*Math.pow(p,4.0) +
+                                       C12880_CAL_B5*Math.pow(p,5.0);
+                            //tvAppend(textView,"WL " + p + "," + x + "\n");
+                            wavelengthVals[i] = x;
                         }
                         //launch the SpectrumPlot activity and send the data
                         Intent intent = new Intent(view.getContext(), SpectrumPlotActivity.class);
@@ -327,13 +358,13 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
-    private int[] readSpec() throws InterruptedException {
+    private int[] specRead() throws InterruptedException {
         //send the command to the device
         String command = "SPEC.READ?\n";
         tvAppend(textView, command);
         serialPort.write(command.getBytes());
         //fetch the data from the queue
-        byte[] usbRecvData = usbQueue.take();
+        byte[] usbRecvData = usbQueue.poll(5, TimeUnit.SECONDS); //FIXME adapt to longer integration times
         if (usbRecvData != null){
             String s = new String(usbRecvData); //interpret as ASCII
             tvAppend(textView, s);
@@ -357,5 +388,19 @@ public class MainActivity extends AppCompatActivity {
             return null;
         }
 
+    }
+
+    private void specInteg(double seconds) throws InterruptedException {
+        //send the command to the device
+        String command = "SPEC.INTEG " + seconds + "\n";
+        tvAppend(textView, command);
+        serialPort.write(command.getBytes());
+        //fetch the data from the queue
+        byte[] usbRecvData = usbQueue.poll(100, TimeUnit.MILLISECONDS);
+        if (usbRecvData != null){
+            String s = new String(usbRecvData); //interpret as ASCII
+            tvAppend(textView, s);
+            tvAppend(textView, "\n");
+        }
     }
 }
