@@ -1,7 +1,22 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    tools:context="com.example.cversek.myapplication.MainActivity">
+    >
+    <!-- "Copy to Clipboard", should appear as action button if possible -->
+    <item
+        android:id="@+id/action_copy_clipboard"
+        android:icon="@drawable/ic_menu_copy"
+        android:title="Copy to Clipboard"
+        app:showAsAction="always" />
+
+    <!-- "Save File", should appear as action button if possible -->
+    <item
+        android:id="@+id/action_save_CSV_file"
+        android:icon="@drawable/ic_menu_save"
+        android:title="Save file as CSV Format"
+        app:showAsAction="ifRoom"/>
+
+    <!-- Settings, should always be in the overflow -->
+
     <item
         android:id="@+id/action_settings"
         android:orderInCategory="100"
