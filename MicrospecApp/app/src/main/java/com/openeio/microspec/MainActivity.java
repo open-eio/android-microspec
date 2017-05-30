@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
     public static final double C12880_CAL_B1 = 2.688494791;
     public static final double C12880_CAL_B2 = -8.964262020e-4;
     public static final double C12880_CAL_B3 = -1.030880174e-5;
-    public static final double C12880_CAL_B4 = 2.083514791e-8;,
+    public static final double C12880_CAL_B4 = 2.083514791e-8;
     public static final double C12880_CAL_B5 = -1.290505933e-11;
 
     Button clearButton;
