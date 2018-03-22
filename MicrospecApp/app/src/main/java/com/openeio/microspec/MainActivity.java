@@ -69,6 +69,8 @@ public class MainActivity extends AppCompatActivity {
 
     private BlockingQueue<byte[]> usbQueue; //queue for holding USB data
 
+    private boolean useAutoExposure = true;
+    private static final double autoExposureStartIntegTime = 0.0001; //seconds
 
     //----------------------------------------------------------------------------------------------
     // MainActivity method overrides
@@ -139,9 +141,30 @@ public class MainActivity extends AppCompatActivity {
                 if (serialPort != null) {
                     try {
                         //set the integration time
-                        specInteg(DEFAULT_INTEGRATION_TIME);
+                        if (useAutoExposure){
+                            specInteg(autoExposureStartIntegTime);
+                        } else {
+                            specInteg(DEFAULT_INTEGRATION_TIME);
+                        }
                         //read the spectrometer and get the data
                         int[] specData = specRead();
+                        //should we adjust the integration time and take another
+                        if (useAutoExposure){
+                            //compute the max of the array
+                            int max_Y = 0;
+                            for (int i = 0; i < specData.length; i++) {
+                                int y = specData[i];
+                                if (y > max_Y) {
+                                    max_Y = y;
+                                }
+                            }
+                            //compute the fraction of 80% max ADC
+                            double M = 0.8*Math.pow(2.0,16.0)/max_Y;
+                            //set the new integration time
+                            specInteg(autoExposureStartIntegTime*M);
+                            //recapture the spectrum
+                            specData = specRead();
+                        }
                         //compute the wavelengths array
                         double[] wavelengthVals = new double[specData.length];
                         for (int i=0; i < wavelengthVals.length; i++){
